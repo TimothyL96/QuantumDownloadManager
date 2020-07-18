@@ -18,7 +18,7 @@ const (
 type DownloadManager struct {
 	downloadUrl            *url.URL
 	nrOfConcurrentDownload int
-	saveDirectory          string // Ends with a slash
+	saveDirectory          string
 	saveFileName           string
 	saveFullPath           string
 	ctx                    context.Context

@@ -6,15 +6,15 @@ import (
 	"net/http"
 )
 
-// HTTP Header : Accept-Ranges
-// If absence or value is 'no', partial request / pause download is not supported
-//
 // Client add HTTP Header : Range bytes=0-999
 // Server returns:
 // HTTP/1.0 206 Partial Content
 // Accept-Ranges: bytes
 // Content-Length: 1000
 // Content-Range: bytes 0-999/2200
+//
+// Partial download reference:
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
 
 func (d *DownloadManager) Download() error {
 	// Initialize download and get response header
@@ -33,10 +33,10 @@ func (d *DownloadManager) Download() error {
 }
 
 func (d *DownloadManager) InitializeDownload() error {
-	// Setup new context for download stoppage
+	// Setup new context for stopping download
 	d.ctx, d.ctxCancel = context.WithCancel(context.Background())
 
-	// Setup request with instance's context
+	// Setup request with the newly created instance's context
 	req, err := http.NewRequestWithContext(d.ctx,
 		http.MethodGet,
 		d.downloadUrl.String(),
@@ -51,12 +51,14 @@ func (d *DownloadManager) InitializeDownload() error {
 		return err
 	}
 
-	// Check if download can be split to concurrent download
-	// and can it be potentially paused
+	// If header "Accept-Ranges" exists and value its not null
+	// Then partial request (concurrent download) / pause is supported
+	//
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Ranges
 	acceptRanges, ok := d.response.Header["Accept-Ranges"]
 
-	// Concurrent download is allowed and download might be able to be paused
-	if ok && len(acceptRanges) > 0 && acceptRanges[0] != "no" {
+	// Concurrent download and pause is allowed
+	if ok && len(acceptRanges) > 0 && acceptRanges[0] != "none" {
 		d.isConcurrentAllowed = true
 		d.isPausedAllowed = true
 	}
