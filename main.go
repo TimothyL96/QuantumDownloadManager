@@ -7,10 +7,6 @@ import (
 	"github.com/ttimt/QuantumDownloadManager/userSettings"
 )
 
-const (
-	DebugMode = true
-)
-
 func main() {
 	Test()
 }
@@ -45,7 +41,7 @@ func Test() {
 
 	// Test: Set URL in code
 	url = "https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1920_18MG.mp4"
-	fmt.Println("URL is:", url, "\n")
+	fmt.Printf("URL is: %s\n\n", url)
 
 	// Initialize a new download
 	downloader, err := downloadManager.NewDownloadManager(

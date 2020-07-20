@@ -2,16 +2,23 @@ package downloadManager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	fileUtils "github.com/ttimt/QuantumDownloadManager/utils/file"
 )
 
 // *********** Initializer
 func (d *DownloadManager) RetrieveDownloadDetails() error {
+	if d.GetIsDownloadStarted() {
+		return errors.New("download has already been initialized")
+	}
+
 	// Initialize download and get response header
 	err := d.InitializeDownload()
 	if err != nil {
@@ -95,6 +102,14 @@ func (d *DownloadManager) Download() error {
 	// Test
 	_ = d.setIsConcurrentAllowed(notAllowed)
 
+	// Block if download has started before
+	if d.GetIsDownloadStarted() {
+		return errors.New("download has already started before. Did you mean resume download ")
+	}
+
+	// Flag the download has started
+	_ = d.SetIsDownloadStarted(true)
+
 	// Start the download
 	if d.GetIsConcurrentAllowed() == allowed {
 		return d.StartConcurrentDownload()
@@ -164,10 +179,11 @@ func (d *DownloadManager) CreateTemporaryFile() (*os.File, error) {
 		".qdm"
 
 	// Check if file exists
-	_, err := os.Stat(tempFilePath)
-
-	// If file name already exists
-	if !os.IsNotExist(err) {
+	isFileExists, err := fileUtils.IsFileExist(tempFilePath)
+	if err != nil {
+		return nil, err
+	} else if isFileExists {
+		// If file name already exists
 		// Increment the temporary file appender
 		return d.CreateTemporaryFile()
 	}

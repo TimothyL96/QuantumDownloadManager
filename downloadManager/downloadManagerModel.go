@@ -5,10 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ttimt/QuantumDownloadManager/utils/file"
 )
 
 const (
@@ -37,6 +38,9 @@ type DownloadManager struct {
 	isConcurrentAllowed    FeatureStatus
 	tempAppender           int
 	tempFileLists          []string
+	isDownloadStarted      bool
+	isDownloadRunning      bool
+	isDownloadComplete     bool
 }
 
 func (d *DownloadManager) GetDownloadUrl() string {
@@ -87,12 +91,14 @@ func (d *DownloadManager) SetSaveDirectory(saveDirectory string) error {
 
 	saveDirectory = strings.TrimSpace(saveDirectory)
 
-	// Convert the slashes
-	saveDirectory = filepath.FromSlash(saveDirectory)
+	// Clean the path
+	saveDirectory = filepath.Clean(saveDirectory)
 
 	// Check if directory exists
-	_, err := os.Stat(saveDirectory)
-	if os.IsNotExist(err) {
+	isFileExists, err := file.IsFileExist(saveDirectory)
+	if err != nil {
+		return err
+	} else if !isFileExists {
 		// Currently does not automatically create the missing directory
 		return errors.New("the given save directory does not exists")
 	}
@@ -111,8 +117,8 @@ func (d *DownloadManager) SetSaveFileName(saveFileName string) error {
 		return errors.New("file name cannot be empty")
 	}
 
-	// Convert slashes to '/'
-	saveFileName = filepath.ToSlash(saveFileName)
+	// Clean file name
+	saveFileName = filepath.Clean(saveFileName)
 
 	// Forward slash '/' not allowed in name
 	if strings.ContainsRune(saveFileName, '/') {
@@ -120,8 +126,10 @@ func (d *DownloadManager) SetSaveFileName(saveFileName string) error {
 	}
 
 	// Need to also check is the file name being used by 1 of the download instances
-	_, err := os.Stat(saveFileName)
-	if !os.IsNotExist(err) {
+	isFileExists, err := file.IsFileExist(saveFileName)
+	if err != nil {
+		return err
+	} else if isFileExists {
 		// File already exists
 		return errors.New("the given file name to save already exists")
 	}
@@ -222,6 +230,36 @@ func (d *DownloadManager) getTempFileList() []string {
 
 func (d *DownloadManager) setTempFileList(tempFileName string) error {
 	d.tempFileLists = append(d.tempFileLists, tempFileName)
+
+	return nil
+}
+
+func (d *DownloadManager) GetIsDownloadStarted() bool {
+	return d.isDownloadStarted
+}
+
+func (d *DownloadManager) SetIsDownloadStarted(isDownloadStarted bool) error {
+	d.isDownloadStarted = isDownloadStarted
+
+	return nil
+}
+
+func (d *DownloadManager) GetIsDownloadRunning() bool {
+	return d.isDownloadRunning
+}
+
+func (d *DownloadManager) SetIsDownloadRunning(isDownloadRunning bool) error {
+	d.isDownloadRunning = isDownloadRunning
+
+	return nil
+}
+
+func (d *DownloadManager) GetIsDownloadComplete() bool {
+	return d.isDownloadComplete
+}
+
+func (d *DownloadManager) SetIsDownloadComplete(isDownloadComplete bool) error {
+	d.isDownloadComplete = isDownloadComplete
 
 	return nil
 }
