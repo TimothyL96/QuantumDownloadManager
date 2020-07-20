@@ -3,38 +3,33 @@ package downloadManager
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 )
 
-// Client add HTTP Header : Range bytes=0-999
-// Server returns:
-// HTTP/1.0 206 Partial Content
-// Accept-Ranges: bytes
-// Content-Length: 1000
-// Content-Range: bytes 0-999/2200
-//
-// Partial download reference:
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
-
-func (d *DownloadManager) Download() error {
+// *********** Initializer
+func (d *DownloadManager) RetrieveDownloadDetails() error {
 	// Initialize download and get response header
 	err := d.InitializeDownload()
 	if err != nil {
 		return err
 	}
 
-	// Start the download
-	err = d.StartConcurrentDownload()
-	if err != nil {
-		return err
-	}
+	// Debug
+	d.DebugUrl()
+	d.DebugHeader()
 
 	return nil
 }
 
 func (d *DownloadManager) InitializeDownload() error {
 	// Setup new context for stopping download
-	d.ctx, d.ctxCancel = context.WithCancel(context.Background())
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	_ = d.setCtx(ctx)
+	_ = d.setCtxCancel(ctxCancel)
 
 	// Setup request with the newly created instance's context
 	req, err := http.NewRequestWithContext(d.ctx,
@@ -46,31 +41,82 @@ func (d *DownloadManager) InitializeDownload() error {
 	}
 
 	// Make the request to get the response header
-	d.response, err = http.DefaultClient.Do(req)
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	_ = d.setResponse(response)
+
+	// Partial download reference:
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Ranges
+	//
+	// Content-Length header - If value is -1, we do not know the file size
+	// and unable to split it to download concurrently or resume download
+	//
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Length
+	//
+	// Known content length
+	if d.response.ContentLength > 0 {
+		// If header "Accept-Ranges" exists and value its not none
+		// Then partial request (concurrent download) / pause is supported
+		//
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Ranges
+		acceptRanges, ok := d.response.Header["Accept-Ranges"]
+
+		// Accept-range exists
+		if ok {
+			// Concurrent download and pause is likely not allowed
+			if acceptRanges[0] == "none" {
+				_ = d.setIsConcurrentAllowed(notAllowed)
+				_ = d.setIsPausedAllowed(notAllowed)
+			} else {
+				// Allowed
+				_ = d.setIsConcurrentAllowed(allowed)
+				_ = d.setIsPausedAllowed(allowed)
+			}
+		} else {
+			// Unknown
+			_ = d.setIsConcurrentAllowed(unknown)
+			_ = d.setIsPausedAllowed(unknown)
+		}
+	} else {
+		// Unknown content length
+		_ = d.setIsConcurrentAllowed(notAllowed)
+		_ = d.setIsPausedAllowed(notAllowed)
+	}
+
+	// Get suggested default file name from header - Content-Disposition
+
+	return nil
+}
+
+// *********** Main downloader
+func (d *DownloadManager) Download() error {
+	// Test
+	_ = d.setIsConcurrentAllowed(notAllowed)
+
+	// Start the download
+	if d.GetIsConcurrentAllowed() == allowed {
+		return d.StartConcurrentDownload()
+	} else {
+		return d.StartAtomicDownload()
+	}
+}
+
+func (d *DownloadManager) StartAtomicDownload() error {
+	// Create a single temporary file
+	tempFile, err := d.CreateTemporaryFile()
 	if err != nil {
 		return err
 	}
 
-	// If header "Accept-Ranges" exists and value its not null
-	// Then partial request (concurrent download) / pause is supported
-	//
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Ranges
-	acceptRanges, ok := d.response.Header["Accept-Ranges"]
-
-	// Concurrent download and pause is allowed
-	if ok && len(acceptRanges) > 0 && acceptRanges[0] != "none" {
-		d.isConcurrentAllowed = true
-		d.isPausedAllowed = true
+	// Write the data to disk
+	written, err := io.Copy(tempFile, d.response.Body)
+	if err != nil {
+		return err
 	}
 
-	// Check if download can be paused and resumed
-	if !d.isPausedAllowed || d.response.ContentLength == -1 {
-		// File size unknown and cannot be paused
-		d.isPausedAllowed = false
-	} else {
-		// Download can be paused
-		d.isPausedAllowed = true
-	}
+	log.Printf("Written %d out of %d bytes", written, d.getResponse().ContentLength)
 
 	return nil
 }
@@ -108,9 +154,54 @@ func (d *DownloadManager) StreamData() error {
 	return nil
 }
 
+func (d *DownloadManager) CreateTemporaryFile() (*os.File, error) {
+	// Increment temporary file number
+	_ = d.incrementTempAppender()
+
+	// Create a new temporary file path
+	tempFilePath := d.GetSaveFullPath() + ".temp" +
+		strconv.Itoa(d.getTempAppender()) +
+		".qdm"
+
+	// Check if file exists
+	_, err := os.Stat(tempFilePath)
+
+	// If file name already exists
+	if !os.IsNotExist(err) {
+		// Increment the temporary file appender
+		return d.CreateTemporaryFile()
+	}
+
+	// Check if there's enough storage to store the file
+	// Use os.truncate to increase size of the new temp file
+
+	// Create the file
+	file, err := os.OpenFile(d.GetSaveFullPath(), os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add this to the temporary file list
+	_ = d.setTempFileList(tempFilePath)
+
+	return file, nil
+}
+
+// *********** DEBUG
 func (d *DownloadManager) DebugUrl() {
 	// Debug print URL
+	fmt.Println("URL DEBUG:")
 	fmt.Println("URL scheme:", d.downloadUrl.Scheme)
 	fmt.Println("URL host:", d.downloadUrl.Host)
 	fmt.Println("URL Path:", d.downloadUrl.Path)
+	fmt.Println()
+}
+
+func (d *DownloadManager) DebugHeader() {
+	// Debug print response header
+	fmt.Println("HEADER DEBUG:")
+	fmt.Println("Response content length:", d.response.ContentLength)
+	fmt.Println("Response headers:", d.response.Header)
+	fmt.Println("Response status code:", d.response.StatusCode)
+	fmt.Println()
 }

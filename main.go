@@ -7,6 +7,10 @@ import (
 	"github.com/ttimt/QuantumDownloadManager/userSettings"
 )
 
+const (
+	DebugMode = true
+)
+
 func main() {
 	Test()
 }
@@ -49,6 +53,12 @@ func Test() {
 		downloadManager.NrOfConcurrentDownload(userSetting1.GetNrOfConcurrentDownload()),
 		downloadManager.SaveDirectory(directory),
 		downloadManager.SaveFileName(fileName))
+	if err != nil {
+		panic(err)
+	}
+
+	// Retrieve download details
+	err = downloader.RetrieveDownloadDetails()
 	if err != nil {
 		panic(err)
 	}

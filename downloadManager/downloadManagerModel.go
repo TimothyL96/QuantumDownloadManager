@@ -15,6 +15,14 @@ const (
 	MaxNrOfConcurrentDownload = 64
 )
 
+const (
+	unknown FeatureStatus = iota
+	allowed
+	notAllowed
+)
+
+type FeatureStatus int
+
 type DownloadManager struct {
 	downloadUrl            *url.URL
 	nrOfConcurrentDownload int
@@ -25,8 +33,10 @@ type DownloadManager struct {
 	ctxCancel              func()
 	response               *http.Response
 	fileSize               int64
-	isPausedAllowed        bool
-	isConcurrentAllowed    bool
+	isPausedAllowed        FeatureStatus
+	isConcurrentAllowed    FeatureStatus
+	tempAppender           int
+	tempFileLists          []string
 }
 
 func (d *DownloadManager) GetDownloadUrl() string {
@@ -109,6 +119,7 @@ func (d *DownloadManager) SetSaveFileName(saveFileName string) error {
 		return errors.New("forward slash '/' is not allowed in file name")
 	}
 
+	// Need to also check is the file name being used by 1 of the download instances
 	_, err := os.Stat(saveFileName)
 	if !os.IsNotExist(err) {
 		// File already exists
@@ -135,10 +146,90 @@ func (d *DownloadManager) setSaveFullPath() error {
 	return nil
 }
 
+func (d *DownloadManager) getCtx() context.Context {
+	return d.ctx
+}
+
+func (d *DownloadManager) setCtx(ctx context.Context) error {
+	d.ctx = ctx
+
+	return nil
+}
+
+func (d *DownloadManager) getCtxCancel() func() {
+	return d.ctxCancel
+}
+
+func (d *DownloadManager) setCtxCancel(ctxCancel func()) error {
+	d.ctxCancel = ctxCancel
+
+	return nil
+}
+
+func (d *DownloadManager) getResponse() *http.Response {
+	return d.response
+}
+
+func (d *DownloadManager) setResponse(response *http.Response) error {
+	d.response = response
+
+	return nil
+}
+
+func (d *DownloadManager) GetFileSize() int64 {
+	return d.fileSize
+}
+
+func (d *DownloadManager) setFileSize(fileSize int64) error {
+	d.fileSize = fileSize
+
+	return nil
+}
+
+func (d *DownloadManager) GetIsPausedAllowed() FeatureStatus {
+	return d.isPausedAllowed
+}
+
+func (d *DownloadManager) setIsPausedAllowed(isPausedAllowed FeatureStatus) error {
+	d.isPausedAllowed = isPausedAllowed
+
+	return nil
+}
+
+func (d *DownloadManager) GetIsConcurrentAllowed() FeatureStatus {
+	return d.isConcurrentAllowed
+}
+
+func (d *DownloadManager) setIsConcurrentAllowed(isConcurrentAllowed FeatureStatus) error {
+	d.isConcurrentAllowed = isConcurrentAllowed
+
+	return nil
+}
+
+func (d *DownloadManager) getTempAppender() int {
+	return d.tempAppender
+}
+
+func (d *DownloadManager) incrementTempAppender() error {
+	d.tempAppender += 1
+
+	return nil
+}
+
+func (d *DownloadManager) getTempFileList() []string {
+	return d.tempFileLists
+}
+
+func (d *DownloadManager) setTempFileList(tempFileName string) error {
+	d.tempFileLists = append(d.tempFileLists, tempFileName)
+
+	return nil
+}
+
 func (d *DownloadManager) String() string {
 	sb := strings.Builder{}
 
-	sb.WriteString("Download URL: ")
+	sb.WriteString("RetrieveDownloadDetails URL: ")
 	sb.WriteString(d.GetDownloadUrl())
 	sb.WriteString("\n")
 
