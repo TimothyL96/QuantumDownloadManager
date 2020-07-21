@@ -179,10 +179,8 @@ func (d *DownloadManager) CreateTemporaryFile() (*os.File, error) {
 		".qdm"
 
 	// Check if file exists
-	isFileExists, err := fileUtils.IsFileExist(tempFilePath)
-	if err != nil {
-		return nil, err
-	} else if isFileExists {
+	isFileExists := fileUtils.IsFileExist(tempFilePath)
+	if isFileExists {
 		// If file name already exists
 		// Increment the temporary file appender
 		return d.CreateTemporaryFile()

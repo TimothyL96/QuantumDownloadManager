@@ -95,10 +95,8 @@ func (d *DownloadManager) SetSaveDirectory(saveDirectory string) error {
 	saveDirectory = filepath.Clean(saveDirectory)
 
 	// Check if directory exists
-	isFileExists, err := file.IsFileExist(saveDirectory)
-	if err != nil {
-		return err
-	} else if !isFileExists {
+	isFileExists := file.IsFileExist(saveDirectory)
+	if !isFileExists {
 		// Currently does not automatically create the missing directory
 		return errors.New("the given save directory does not exists")
 	}
@@ -126,10 +124,8 @@ func (d *DownloadManager) SetSaveFileName(saveFileName string) error {
 	}
 
 	// Need to also check is the file name being used by 1 of the download instances
-	isFileExists, err := file.IsFileExist(saveFileName)
-	if err != nil {
-		return err
-	} else if isFileExists {
+	isFileExists := file.IsFileExist(saveFileName)
+	if isFileExists {
 		// File already exists
 		return errors.New("the given file name to save already exists")
 	}

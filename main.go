@@ -61,7 +61,7 @@ func Test() {
 
 	// Start the download
 	// err = downloader.Download()
-	if err != nil {
-		panic(err)
-	}
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
