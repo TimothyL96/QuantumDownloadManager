@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ttimt/QuantumDownloadManager/downloadManager"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/downloadManager"
 )
 
 type UserSettings struct {

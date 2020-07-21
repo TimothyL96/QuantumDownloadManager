@@ -10,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	fileUtils "github.com/ttimt/QuantumDownloadManager/utils/file"
+	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/utils/file"
 )
 
 // *********** Initializer
@@ -119,7 +119,7 @@ func (d *DownloadManager) Download() error {
 }
 
 func (d *DownloadManager) StartAtomicDownload() error {
-	// Create a single temporary file
+	// Create downloader single temporary file
 	tempFile, err := d.CreateTemporaryFile()
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func (d *DownloadManager) CreateTemporaryFile() (*os.File, error) {
 	// Increment temporary file number
 	_ = d.incrementTempAppender()
 
-	// Create a new temporary file path
+	// Create downloader new temporary file path
 	tempFilePath := d.GetSaveFullPath() + ".temp" +
 		strconv.Itoa(d.getTempAppender()) +
 		".qdm"

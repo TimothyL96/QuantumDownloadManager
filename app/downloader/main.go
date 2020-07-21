@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/ttimt/QuantumDownloadManager/downloadManager"
-	"github.com/ttimt/QuantumDownloadManager/userSettings"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/downloadManager"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/userSettings"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func Test() {
 	url = "https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1920_18MG.mp4"
 	fmt.Printf("URL is: %s\n\n", url)
 
-	// Initialize a new download
+	// Initialize downloader new download
 	downloader, err := downloadManager.NewDownloadManager(
 		downloadManager.DownloadUrl(url),
 		downloadManager.NrOfConcurrentDownload(userSetting1.GetNrOfConcurrentDownload()),
