@@ -21,7 +21,6 @@
 
 <br>
 
----
 
 ![Made with GO](https://forthebadge.com/images/badges/made-with-go.svg)
 ![Built by Developer](https://forthebadge.com/images/badges/built-by-developers.svg)
