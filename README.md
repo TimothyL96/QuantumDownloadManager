@@ -17,10 +17,10 @@
 ## Recent Activity
 
 <!--START_SECTION:activity-->
-<!--END_SECTION:activity-->
-
-## Questions?
-[![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg?style=flat&logo=linkedin)](https://www.linkedin.com/in/timothy0707/)
+1. 🎉 Merged PR [#3](https://github.com//ttimt/QuantumDownloadManager/pull/3) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
+2. 💪 Opened PR [#3](https://github.com//ttimt/QuantumDownloadManager/pull/3) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
+3. 🎉 Merged PR [#2](https://github.com//ttimt/QuantumDownloadManager/pull/2) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
+4. 💪 Opened PR [#2](https://github.com//ttimt/QuantumDownloadManager/pull/2) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
 
 <br>
 
