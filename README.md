@@ -14,7 +14,10 @@
 
 - license
 
+## Recent Activity
 
+<!--START_SECTION:activity-->
+<!--END_SECTION:activity-->
 
 ## Questions?
 [![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg?style=flat&logo=linkedin)](https://www.linkedin.com/in/timothy0707/)
