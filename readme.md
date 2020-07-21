@@ -19,8 +19,11 @@
 [![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg?style=flat&logo=linkedin)](https://www.linkedin.com/in/timothy0707/)
 
 <br>
+
 ---
+
 ![Made with GO](https://forthebadge.com/images/badges/made-with-go.svg)
 ![Built by Developer](https://forthebadge.com/images/badges/built-by-developers.svg)
 ![No ragrets](https://forthebadge.com/images/badges/makes-people-smile.svg)
+
 ---
