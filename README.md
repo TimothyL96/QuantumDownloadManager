@@ -15,16 +15,11 @@
 
 - license
 
-## Recent Activity
-
-<!--START_SECTION:activity-->
-<!--END_SECTION:activity-->
 
 <br><br>
 
+---
 
 ![Made with GO](https://forthebadge.com/images/badges/made-with-go.svg)
 ![Built by Developer](https://forthebadge.com/images/badges/built-by-developers.svg)
 ![No ragrets](https://forthebadge.com/images/badges/makes-people-smile.svg)
-
----
