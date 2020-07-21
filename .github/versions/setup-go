@@ -1,0 +1,11 @@
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v1
+    - name: Read Go versions
+      run: echo "##[set-output name=go_version;]$(cat .github/versions/go)"
+      id: go_versions
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{ steps.go_versions.outputs.go_version }}
+      id: go
