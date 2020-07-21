@@ -18,12 +18,9 @@
 ## Recent Activity
 
 <!--START_SECTION:activity-->
-1. 🎉 Merged PR [#3](https://github.com//ttimt/QuantumDownloadManager/pull/3) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
-2. 💪 Opened PR [#3](https://github.com//ttimt/QuantumDownloadManager/pull/3) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
-3. 🎉 Merged PR [#2](https://github.com//ttimt/QuantumDownloadManager/pull/2) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
-4. 💪 Opened PR [#2](https://github.com//ttimt/QuantumDownloadManager/pull/2) in [ttimt/QuantumDownloadManager](https://github.com//ttimt/QuantumDownloadManager)
+<!--END_SECTION:activity-->
 
-<br>
+<br><br>
 
 
 ![Made with GO](https://forthebadge.com/images/badges/made-with-go.svg)
