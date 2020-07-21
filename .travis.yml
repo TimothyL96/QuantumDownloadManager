@@ -8,10 +8,10 @@ before_install:
   - go get -t -v ./...
 
 install:
-  - cd app\downloader
+#  - cd app\downloader
   - go build .
 
 script:
-  - cd ..\..\
+#  - cd ..\..\
   - go test -v ./...
 #  - go test -v -race -coverprofile=coverage.txt -covermode=atomic
