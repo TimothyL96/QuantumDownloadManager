@@ -1,9 +1,10 @@
 package setting
 
-type settingConfigOption func(u *Setting) error
+// ConfigOption is the signature of functional option for Setting.
+type ConfigOption func(u *Setting) error
 
 // NewSetting returns a new instance of Setting.
-func NewSetting(configurations ...settingConfigOption) (*Setting, error) {
+func NewSetting(configurations ...ConfigOption) (*Setting, error) {
 	setting := &Setting{}
 
 	for _, configuration := range configurations {
@@ -18,7 +19,7 @@ func NewSetting(configurations ...settingConfigOption) (*Setting, error) {
 // Functional options functions:
 
 // NrOfConcurrentConnection helps set the value of concurrent connection during instance creation
-func NrOfConcurrentConnection(nrOfConcurrentConnection int) settingConfigOption {
+func NrOfConcurrentConnection(nrOfConcurrentConnection int) ConfigOption {
 	return func(s *Setting) error {
 		return s.SetNrOfConcurrentConnection(nrOfConcurrentConnection)
 	}

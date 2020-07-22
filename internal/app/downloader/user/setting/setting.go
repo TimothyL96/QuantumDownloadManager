@@ -1,3 +1,4 @@
+// Package setting manages the settings of user
 package setting
 
 import (
@@ -30,15 +31,15 @@ func (s *Setting) SetNrOfConcurrentConnection(nrOfConcurrentConnection int) erro
 	if nrOfConcurrentConnection > downloadManager.MaxNrOfConcurrentConnection {
 		// The given number exceeds the maximum allowed connection
 		// Defaulting to maximum concurrent connection
-		err = errors.New("defaulting to the maximum allowed concurrent connection (" +
-			strconv.Itoa(downloadManager.MaxNrOfConcurrentConnection) +
-			") as the given number exceeded maximum allowed")
+		errors.Is(err, errors.New("defaulting to the maximum allowed concurrent connection ("+
+			strconv.Itoa(downloadManager.MaxNrOfConcurrentConnection)+
+			") as the given number exceeded maximum allowed"))
 
 		s.nrOfConcurrentConnection = downloadManager.MaxNrOfConcurrentConnection
 	} else if nrOfConcurrentConnection < 1 {
 		// The given number is below 1
 		// Defaulting to 1
-		err = errors.New("defaulting to 1 concurrent connection as the given number is below 1")
+		errors.Is(err, errors.New("defaulting to 1 concurrent connection as the given number is below 1"))
 
 		s.nrOfConcurrentConnection = 1
 	}
