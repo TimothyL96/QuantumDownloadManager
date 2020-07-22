@@ -1,8 +1,10 @@
-package file
+package file_test
 
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
 func TestIsFileExist(t *testing.T) {
@@ -18,9 +20,8 @@ func TestIsFileExist(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			testCase.path = filepath.Clean(testCase.path)
-
-			get := IsFileExist(testCase.path)
+			path := filepath.Clean(testCase.path)
+			get := file.IsFileExist(path)
 
 			if testCase.want != get {
 				t.Errorf("Want %t, got %t", testCase.want, get)
