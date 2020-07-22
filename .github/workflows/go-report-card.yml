@@ -4,8 +4,8 @@ on:
   schedule:
     - cron: 47 4 * * *
   push:
-    branches:    
-      - '*' 
+    branches:
+      - '*'
 
 jobs:
   build:
