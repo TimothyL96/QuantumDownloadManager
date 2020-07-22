@@ -2,9 +2,11 @@
 package setting
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/getlantern/errors"
 
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/downloadManager"
 )
@@ -31,15 +33,15 @@ func (s *Setting) SetNrOfConcurrentConnection(nrOfConcurrentConnection int) erro
 	if nrOfConcurrentConnection > downloadManager.MaxNrOfConcurrentConnection {
 		// The given number exceeds the maximum allowed connection
 		// Defaulting to maximum concurrent connection
-		errors.Is(err, errors.New("defaulting to the maximum allowed concurrent connection ("+
-			strconv.Itoa(downloadManager.MaxNrOfConcurrentConnection)+
-			") as the given number exceeded maximum allowed"))
+		err = fmt.Errorf("defaulting to the maximum allowed concurrent connection (" +
+			strconv.Itoa(downloadManager.MaxNrOfConcurrentConnection) +
+			") as the given number exceeded maximum allowed")
 
 		s.nrOfConcurrentConnection = downloadManager.MaxNrOfConcurrentConnection
 	} else if nrOfConcurrentConnection < 1 {
 		// The given number is below 1
 		// Defaulting to 1
-		errors.Is(err, errors.New("defaulting to 1 concurrent connection as the given number is below 1"))
+		err = errors.Wrap(errors.New("defaulting to 1 concurrent connection as the given number is below 1"))
 
 		s.nrOfConcurrentConnection = 1
 	}
