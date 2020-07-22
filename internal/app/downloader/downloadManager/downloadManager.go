@@ -10,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/utils/file"
+	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
 // *********** Initializer

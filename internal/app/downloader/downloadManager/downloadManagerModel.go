@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/utils/file"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
 const (
