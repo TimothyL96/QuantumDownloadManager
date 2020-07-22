@@ -2,7 +2,6 @@
 package setting
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -33,9 +32,9 @@ func (s *Setting) SetNrOfConcurrentConnection(nrOfConcurrentConnection int) erro
 	if nrOfConcurrentConnection > downloadManager.MaxNrOfConcurrentConnection {
 		// The given number exceeds the maximum allowed connection
 		// Defaulting to maximum concurrent connection
-		err = fmt.Errorf("defaulting to the maximum allowed concurrent connection (" +
+		err = errors.Wrap(errors.New("defaulting to the maximum allowed concurrent connection (" +
 			strconv.Itoa(downloadManager.MaxNrOfConcurrentConnection) +
-			") as the given number exceeded maximum allowed")
+			") as the given number exceeded maximum allowed"))
 
 		s.nrOfConcurrentConnection = downloadManager.MaxNrOfConcurrentConnection
 	} else if nrOfConcurrentConnection < 1 {
