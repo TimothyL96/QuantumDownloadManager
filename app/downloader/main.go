@@ -3,24 +3,25 @@ package main
 import (
 	"fmt"
 
-	"github.com/ttimt/QuantumDownloadManager/downloadManager"
-	"github.com/ttimt/QuantumDownloadManager/userSettings"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/downloadManager"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user/setting"
 )
 
 func main() {
-	Test()
+	// Testing concurrent download
+	test()
 }
 
-func Test() {
+func test() {
 	// Test
 	const (
 		nrOfConcurrentDownload = 1
 		fileName               = "download.mp4"
-		directory              = "D:\\Timothy/Desktop\\"
+		directory              = `D:\Timothy/Desktop\`
 	)
 
-	userSetting1, err := userSettings.NewUserSettings(
-		userSettings.NrOfConcurrentDownload(nrOfConcurrentDownload))
+	userSetting1, err := setting.NewSetting(
+		setting.NrOfConcurrentConnection(nrOfConcurrentDownload))
 	if err != nil {
 		panic(err)
 	}
@@ -43,10 +44,10 @@ func Test() {
 	url = "https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1920_18MG.mp4"
 	fmt.Printf("URL is: %s\n\n", url)
 
-	// Initialize a new download
+	// Initialize downloader new download
 	downloader, err := downloadManager.NewDownloadManager(
 		downloadManager.DownloadUrl(url),
-		downloadManager.NrOfConcurrentDownload(userSetting1.GetNrOfConcurrentDownload()),
+		downloadManager.NrOfConcurrentDownload(userSetting1.NrOfConcurrentConnection()),
 		downloadManager.SaveDirectory(directory),
 		downloadManager.SaveFileName(fileName))
 	if err != nil {
@@ -54,8 +55,7 @@ func Test() {
 	}
 
 	// Retrieve download details
-	err = downloader.RetrieveDownloadDetails()
-	if err != nil {
+	if err = downloader.RetrieveDownloadDetails(); err != nil {
 		panic(err)
 	}
 

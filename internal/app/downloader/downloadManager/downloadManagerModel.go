@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ttimt/QuantumDownloadManager/utils/file"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
 const (
-	MaxNrOfConcurrentDownload = 64
+	MaxNrOfConcurrentConnection = 64
 )
 
 const (
@@ -67,9 +67,9 @@ func (d *DownloadManager) GetNrOfConcurrentDownload() int {
 }
 
 func (d *DownloadManager) SetNrOfConcurrentDownload(nrOfConcurrentDownload int) error {
-	if nrOfConcurrentDownload > MaxNrOfConcurrentDownload {
+	if nrOfConcurrentDownload > MaxNrOfConcurrentConnection {
 		return errors.New("number of concurrent download given exceeded maximum allowed (" +
-			strconv.Itoa(MaxNrOfConcurrentDownload) +
+			strconv.Itoa(MaxNrOfConcurrentConnection) +
 			")")
 	} else if nrOfConcurrentDownload < 1 {
 		return errors.New("number of concurrent download given is less than 1")
