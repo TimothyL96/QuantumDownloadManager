@@ -16,7 +16,7 @@ const (
 	// MaxNrOfConcurrentConnectionAllowed is the maximum number of connection allowed.
 	MaxNrOfConcurrentConnectionAllowed = 64
 
-	// TempFileFileExtension is the file extension used for any generated temporary file.
+	// TempFileFileExtension is the file extension for temporary download file.
 	TempFileFileExtension = "qdm"
 )
 
