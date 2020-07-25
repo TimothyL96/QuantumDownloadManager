@@ -205,7 +205,7 @@ func (d *Download) CreateTemporaryFile() (*os.File, error) {
 		"." +
 		TempFileFileExtension
 
-	// Check if name for temporary file exists
+	// Check if temporary file exists
 	isFileExists := fileUtils.IsFileExist(tempFilePath)
 	if isFileExists {
 		// If file name already exists
@@ -216,7 +216,7 @@ func (d *Download) CreateTemporaryFile() (*os.File, error) {
 	}
 
 	// Check if there's enough storage to store the file
-	// Use os.truncate to increase size of the new temp file
+	// Use os.truncate to increase size of the new temp file without writing to file
 
 	// Create the file
 	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY, os.ModePerm)
