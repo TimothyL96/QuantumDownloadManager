@@ -96,7 +96,7 @@ func (d *Download) processRequestHeader() error {
 	return nil
 }
 
-// Download xxx.
+// Download starts the download first time.
 func (d *Download) Download() error {
 	// Test
 	_ = d.setIsConcurrentConnectionAllowed(notAllowed)
