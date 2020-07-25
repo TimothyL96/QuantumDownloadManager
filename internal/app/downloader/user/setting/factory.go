@@ -18,7 +18,7 @@ func NewSetting(configurations ...ConfigOption) (*Setting, error) {
 
 // Functional options functions:
 
-// NrOfConcurrentConnection helps set the value of concurrent connection during instance creation
+// NrOfConcurrentConnection allows setting the value of number of concurrent connection.
 func NrOfConcurrentConnection(nrOfConcurrentConnection int) ConfigOption {
 	return func(s *Setting) error {
 		return s.SetNrOfConcurrentConnection(nrOfConcurrentConnection)

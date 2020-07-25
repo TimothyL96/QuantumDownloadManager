@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/downloadManager"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/manager"
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user/setting"
 )
 
@@ -45,23 +45,25 @@ func test() {
 	fmt.Printf("URL is: %s\n\n", url)
 
 	// Initialize downloader new download
-	downloader, err := downloadManager.NewDownloadManager(
-		downloadManager.DownloadUrl(url),
-		downloadManager.NrOfConcurrentDownload(userSetting1.NrOfConcurrentConnection()),
-		downloadManager.SaveDirectory(directory),
-		downloadManager.SaveFileName(fileName))
+	downloader, err := manager.NewDownload(
+		manager.DownloadURL(url),
+		manager.NrOfConcurrentDownload(userSetting1.NrOfConcurrentConnection()),
+		manager.SaveDirectory(directory),
+		manager.SaveFileName(fileName))
 	if err != nil {
 		panic(err)
 	}
 
+	fmt.Println(downloader)
 	// Retrieve download details
-	if err = downloader.RetrieveDownloadDetails(); err != nil {
+	if err = downloader.InitializeDownload(); err != nil {
 		panic(err)
 	}
 
 	// Start the download
-	// err = downloader.Download()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err = downloader.Download()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Download complete")
 }
