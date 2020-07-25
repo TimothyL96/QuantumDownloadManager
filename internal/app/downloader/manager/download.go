@@ -121,6 +121,7 @@ func (d *Download) Download() error {
 // StartAtomicDownload download the file without any concurrent connection.
 func (d *Download) StartAtomicDownload() error {
 	// Check if download has been started before, and resume the last pause state
+	// To be done when implementing pause feature
 
 	// Create downloader single temporary file
 	tempFile, err := d.CreateTemporaryFile()
@@ -128,7 +129,7 @@ func (d *Download) StartAtomicDownload() error {
 		return err
 	}
 
-	// Set the download as currently running
+	// Set the download as running
 	_ = d.setIsDownloadRunning(true)
 
 	// Write the data to disk
