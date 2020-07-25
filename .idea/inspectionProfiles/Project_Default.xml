@@ -18,5 +18,6 @@
         <method importPath="io" receiver="ReadCloser" name="Close" />
       </methods>
     </inspection_tool>
+    <inspection_tool class="InconsistentLineSeparators" enabled="true" level="WARNING" enabled_by_default="true" />
   </profile>
 </component>
