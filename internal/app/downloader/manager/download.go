@@ -13,7 +13,8 @@ import (
 	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
-// InitializeDownload initialize the new download by requesting the download URL and updating the download fields with the received header.
+// InitializeDownload initialize the new download by sending a request to the download URL
+// and updating the download fields value by processing the received header.
 func (d *Download) InitializeDownload() error {
 	if d.isDownloadRunning {
 		return errors.New("download is currently running")
