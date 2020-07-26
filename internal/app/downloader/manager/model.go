@@ -109,11 +109,8 @@ func (d *Download) SetSaveDirectory(directory string) error {
 		return errors.New("save directory cannot be empty")
 	}
 
-	// Fix the path
-	directory = file.FixPath(directory)
-
-	// Check if directory exists
-	isFileExists := file.IsFileExist(directory)
+	// Check if cleaned directory path exists
+	isFileExists := file.IsCleanedFileExist(directory)
 	if !isFileExists {
 		// Currently does not automatically create the missing directory
 		return errors.New("the given save directory does not exists")
