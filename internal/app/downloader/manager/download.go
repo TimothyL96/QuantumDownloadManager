@@ -193,18 +193,18 @@ func (d *Download) StartConcurrentDownload() error {
 			return err
 		}
 
-		// Calculate bytes to get by adding the current bytes range
+		// Calculate bytes to get per concurrent connection
 		var bytesToGet int64
 
 		// If this is not the last concurrent connection
 		if i != 1 {
 			bytesToGet = int64(math.Floor(float64(contentLength / int64(i))))
 		} else {
-			// Append remaining bytes to this request
+			// Append remaining bytes to this request for the last concurrent connection
 			bytesToGet = contentLength
 		}
 
-		// Send a HTTP request to get header
+		// Send a HTTP request with custom header to get the new response header
 		if err = downloader.sendHTTPRequest(map[string]string{"Range": "bytes=" +
 			strconv.FormatInt(currentByte, 10) +
 			"-" +
@@ -216,23 +216,29 @@ func (d *Download) StartConcurrentDownload() error {
 		contentLength -= bytesToGet
 		currentByte += bytesToGet
 
-		// Check status code is 206 before moving to next concurrent connection
+		// Check status code is 206 Partial Content before moving to next concurrent connection
 		// 200 - Partial download not supported
 		// 206 - Successful request
-		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range
+		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range)
 
+		// Start the concurrent download of the new bytes range calculated above
+		// Use a closure in the below anonymous function / goroutine : (i int)
+		// to store the concurrent connection index (Same value as 'i' in the current for loop)
 		go func(i int) {
 			fmt.Println("***** Starting concurrent download:", i)
+
+			// Track current running goroutine to its completion
 			wg.Add(1)
 
-			// Write the data to disk
+			// Write the specific data range to disk
 			_, _ = io.Copy(file, downloader.response.Body)
 
-			// Close file
+			// Close the temporary file
 			_ = file.Close()
 
 			fmt.Println("Closing concurrent download:", i)
 
+			// Set current goroutine as completed
 			wg.Done()
 		}(i)
 
@@ -240,27 +246,36 @@ func (d *Download) StartConcurrentDownload() error {
 		d.appendToTempFileList(file.Name())
 	}
 
+	// Wait for all tracked goroutines to be completed
 	wg.Wait()
 
 	// Combine files
 	fmt.Println("Temp file list:", d.tempFileList)
 
+	// Open the file to save and combine the completed download
+	// Currently, replace file if exist, can append a value later on: filename_1
 	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Println("Writing to file:", file.Name())
+
+	// Go through each temporary file
 	for _, v := range d.tempFileList {
 		file1, err := os.OpenFile(v, os.O_RDONLY, os.ModePerm)
 		if err != nil {
 			panic(err)
 		}
+
+		// Copy all bytes from the temporary file to the final download file
 		_, _ = io.Copy(file, file1)
+
+		// Close the temporary file after copying
 		_ = file1.Close()
 
 		// Remove the temporary file that has been copied
-		err = os.Remove(file1.Name())
-		if err != nil {
+		if err = os.Remove(file1.Name()); err != nil {
 			fmt.Println("Failed to delete temporary file:", err)
 		}
 	}
