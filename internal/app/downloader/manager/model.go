@@ -31,7 +31,7 @@ type Download struct {
 	defaultFileName             string
 
 	// Flags
-	isPausedAllowed               FlagState
+	isPauseAllowed                FlagState
 	isConcurrentConnectionAllowed FlagState
 
 	// Download status
@@ -223,13 +223,13 @@ func (d *Download) setFileSize(fileSize int64) error {
 	return nil
 }
 
-// IsPausedAllowed returns a state indicating if pausing the download is supported.
-func (d *Download) IsPausedAllowed() FlagState {
-	return d.isPausedAllowed
+// IsPauseAllowed returns a state indicating if pausing the download is supported.
+func (d *Download) IsPauseAllowed() FlagState {
+	return d.isPauseAllowed
 }
 
-func (d *Download) setIsPausedAllowed(isPausedAllowed FlagState) error {
-	d.isPausedAllowed = isPausedAllowed
+func (d *Download) setIsPauseAllowed(isPauseAllowed FlagState) error {
+	d.isPauseAllowed = isPauseAllowed
 
 	return nil
 }
@@ -278,12 +278,33 @@ func (d *Download) setIsDownloadRunning(isDownloadRunning bool) error {
 	return nil
 }
 
+// IsDownloadPaused returns a boolean indicating whether the download is paused.
+func (d *Download) IsDownloadPaused() bool {
+	if !d.IsDownloadRunning() && !d.IsDownloadCompleted() && !d.isDownloadAborted {
+		return true
+	}
+
+	return false
+}
+
 // IsDownloadCompleted returns a boolean indicating whether the download has been completed.
 func (d *Download) IsDownloadCompleted() bool {
 	return d.isDownloadCompleted
 }
 
+// IsDownloadAborted returns a boolean indicating whether the download has been completed.
+func (d *Download) IsDownloadAborted() bool {
+	return d.isDownloadAborted
+}
+
+func (d *Download) setIsDownloadAborted(isDownloadAborted bool) error {
+	d.isDownloadAborted = isDownloadAborted
+
+	return nil
+}
+
 func (d *Download) setIsDownloadCompleted(isDownloadCompleted bool) error {
+	_ = d.setIsDownloadRunning(false)
 	d.isDownloadCompleted = isDownloadCompleted
 
 	return nil
@@ -343,7 +364,7 @@ func (d *Download) String() string {
 	sb.WriteString("\n")
 
 	sb.WriteString("Is paused allowed: ")
-	sb.WriteString(d.IsPausedAllowed().String())
+	sb.WriteString(d.IsPauseAllowed().String())
 	sb.WriteString("\n")
 
 	sb.WriteString("Is concurrent connection allowed: ")
