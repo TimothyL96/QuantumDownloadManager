@@ -126,6 +126,7 @@ func (d *Download) SaveFileName() string {
 	return d.saveFileName
 }
 
+// setFileName is a helper method for setting file name
 func (d *Download) setFileName(fileName string) error {
 	if len(fileName) == 0 {
 		return errors.New("file name cannot be empty")
@@ -142,6 +143,8 @@ func (d *Download) setFileName(fileName string) error {
 	// When combining and writing to file:
 	// If a file with the same name as current download save file name exists
 	// append a unique number behind the file name
+	//
+	// Make sure file name and path does not clash with other incomplete downloads in this application!
 
 	d.saveFileName = fileName
 
