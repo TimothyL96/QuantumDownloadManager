@@ -55,7 +55,7 @@ func test() {
 	}
 
 	// Retrieve download details
-	if err = downloader.InitializeDownload(); err != nil {
+	if err = downloader.Initialize(); err != nil {
 		panic(err)
 	}
 

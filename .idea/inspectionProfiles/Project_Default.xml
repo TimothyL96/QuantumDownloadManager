@@ -16,6 +16,8 @@
         <method importPath="strings" receiver="*Builder" name="WriteRune" />
         <method importPath="math/rand" receiver="*Rand" name="Read" />
         <method importPath="io" receiver="ReadCloser" name="Close" />
+        <method importPath="github.com/ttimt/QuantumDownloadManager/internal/app/downloader/manager" receiver="*Download" name="startConcurrentDownload" />
+        <method importPath="os" receiver="*File" name="Close" />
       </methods>
     </inspection_tool>
     <inspection_tool class="InconsistentLineSeparators" enabled="true" level="WARNING" enabled_by_default="true" />

@@ -11,31 +11,10 @@ import (
 	"os"
 	"strconv"
 	"sync"
-
-	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
 
-// InitializeDownload initialize the new download by sending a request to the download URL
-// and updating the download fields value by processing the received header.
-func (d *Download) InitializeDownload() error {
-	if d.isDownloadRunning {
-		return errors.New("download is currently running")
-	}
-
-	// Send a HTTP request to get the request header
-	if err := d.sendHTTPRequest(nil); err != nil {
-		return err
-	}
-
-	// Process the received request header
-	if err := d.processRequestHeader(); err != nil {
-		return err
-	}
-
-	// Set download as initialized
-	return d.setIsDownloadInitialized(true)
-}
-
+// sendHTTPRequest sends a HTTP request with custom header from parameter
+// and stores the response in downloader.Response
 func (d *Download) sendHTTPRequest(header map[string]string) error {
 	// Setup new context for stopping download
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -52,10 +31,8 @@ func (d *Download) sendHTTPRequest(header map[string]string) error {
 	}
 
 	// Add custom header to the request
-	if header != nil {
-		for k, v := range header {
-			req.Header.Add(k, v)
-		}
+	for k, v := range header {
+		req.Header.Add(k, v)
 	}
 
 	// DEBUG: Print request header
@@ -95,21 +72,21 @@ func (d *Download) processRequestHeader() error {
 			// Concurrent download and pause is likely not allowed
 			if acceptRanges[0] == "none" {
 				_ = d.setIsConcurrentConnectionAllowed(notAllowed)
-				_ = d.setIsPausedAllowed(notAllowed)
+				_ = d.setIsPauseAllowed(notAllowed)
 			} else {
 				// Allowed
 				_ = d.setIsConcurrentConnectionAllowed(allowed)
-				_ = d.setIsPausedAllowed(allowed)
+				_ = d.setIsPauseAllowed(allowed)
 			}
 		} else {
 			// Unknown
 			_ = d.setIsConcurrentConnectionAllowed(unknown)
-			_ = d.setIsPausedAllowed(unknown)
+			_ = d.setIsPauseAllowed(unknown)
 		}
 	} else {
 		// Unknown content length
 		_ = d.setIsConcurrentConnectionAllowed(notAllowed)
-		_ = d.setIsPausedAllowed(notAllowed)
+		_ = d.setIsPauseAllowed(notAllowed)
 	}
 
 	// Get suggested default file name from header - Content-Disposition
@@ -118,72 +95,52 @@ func (d *Download) processRequestHeader() error {
 	return nil
 }
 
-// Download starts the download first time.
-func (d *Download) Download() error {
-	// Test
-	// _ = d.setIsConcurrentConnectionAllowed(notAllowed)
-
-	// Block if download has started before
-	if d.IsDownloadStarted() {
-		return errors.New("download has already started before. Did you mean resume download ")
-	}
-
-	// Flag the download has started
-	_ = d.setIsDownloadStarted(true)
-
-	// Create a place holder file with the same name as the download save file and path
-	// Check file exist before creating the place holder file
-	placeholderFile, _ := os.Create(d.SaveFullPath())
-	_ = placeholderFile.Close()
-
-	// Start the download
-	if d.IsConcurrentConnectionAllowed() == allowed && d.MaxNrOfConcurrentConnection() > 1 {
-		return d.StartConcurrentDownload()
-	}
-
-	// Non concurrent single connection download
-	return d.StartAtomicDownload()
-}
-
-// StartAtomicDownload download the file without any concurrent connection.
-func (d *Download) StartAtomicDownload() error {
+// startAtomicDownload download the file without any concurrent connection.
+func (d *Download) startAtomicDownload() {
 	// Check if download has been started before, and resume the last pause state
 	// To be done when implementing pause feature
 
 	fmt.Println("Starting atomic download")
 
-	// Create downloader single temporary file
-	tempFile, err := d.CreateTemporaryFile()
-	if err != nil {
-		return err
-	}
-
 	// Set the download as running
 	_ = d.setIsDownloadRunning(true)
+
+	// Create downloader single temporary file
+	tempFile, err := d.createTemporaryFile()
+	if err != nil {
+		d.Abort()
+		return
+	}
+
+	// Close temp file
+	defer tempFile.Close()
 
 	// Write the data to disk
 	written, err := io.Copy(tempFile, d.response.Body)
 	if err != nil {
-		return err
+		d.Abort()
+		return
 	}
 
-	// Close temp file
-	_ = tempFile.Close()
-
-	// Rename temp file to save file name
+	// Rename temp file to download save file name
 	if err = os.Rename(tempFile.Name(), d.SaveFullPath()); err != nil {
-		return err
+		d.Abort()
+		return
 	}
 
 	log.Printf("DEBUG: File downloaded with a single connection."+
 		"\nWritten %d out of %d bytes", written, d.response.ContentLength)
 
-	return nil
+	// Set download completed
+	d.complete()
 }
 
-// StartConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
-func (d *Download) StartConcurrentDownload() error {
+// startConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
+func (d *Download) startConcurrentDownload() error {
 	fmt.Println("Starting concurrent download")
+
+	// Set the download as running
+	_ = d.setIsDownloadRunning(true)
 
 	contentLength := d.response.ContentLength
 	var currentByte int64 = 0
@@ -203,7 +160,7 @@ func (d *Download) StartConcurrentDownload() error {
 		}
 
 		// Get a temporary file name
-		file, err := downloader.CreateTemporaryFile()
+		file, err := downloader.createTemporaryFile()
 		if err != nil {
 			return err
 		}
@@ -215,7 +172,7 @@ func (d *Download) StartConcurrentDownload() error {
 
 		// If this is not the last concurrent connection
 		if i != 1 {
-			bytesToGet = int64(math.Floor(float64(contentLength / int64(i))))
+			bytesToGet = int64(math.Floor(float64(contentLength) / float64(i)))
 		} else {
 			// Append remaining bytes to this request for the last concurrent connection
 			bytesToGet = contentLength
@@ -237,6 +194,10 @@ func (d *Download) StartConcurrentDownload() error {
 		// 200 - Partial download not supported
 		// 206 - Successful request
 		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range)
+		if downloader.response.StatusCode != 206 {
+			return errors.New("Return status code is not 206 partial download but:" +
+				strconv.Itoa(downloader.response.StatusCode))
+		}
 
 		// Start the concurrent download with the new bytes range calculated above
 		// Use a closure in the below anonymous function / goroutine : (i int)
@@ -306,93 +267,13 @@ func (d *Download) StartConcurrentDownload() error {
 		}
 	}
 
+	// Set download as completed
+	_ = d.setIsDownloadCompleted(true)
+
 	return nil
 }
 
-// StreamData xxx.
-func (d *Download) StreamData() error {
+// streamData xxx.
+func (d *Download) streamData() error {
 	return nil
-}
-
-// Pause will pause the current download if it is currently running.
-func (d *Download) Pause() error {
-	return nil
-}
-
-// Resume will continue the current download if it is paused.
-func (d *Download) Resume() error {
-	return nil
-}
-
-// Abort will cancel and clear the current download.
-func (d *Download) Abort() error {
-	return nil
-}
-
-// CreateTemporaryFile creates a temporary file with a unique name appended by a number.
-func (d *Download) CreateTemporaryFile() (*os.File, error) {
-	// Increment temporary file number
-	d.incrementTempFileAppender()
-
-	// Create a new temporary file path
-	tempFilePath := d.SaveFullPath() +
-		".temp" +
-		strconv.Itoa(d.tempFileNameAppender) +
-		"." +
-		TempFileFileExtension
-
-	// Check if temporary file exists
-	isFileExists := fileUtils.IsFileExist(tempFilePath)
-	if isFileExists {
-		// If file name already exists
-		// Increment the temporary file appender
-		return d.CreateTemporaryFile()
-
-		// Check infinite loop?
-	}
-
-	// Check if there's enough storage to store the file
-	// Use os.truncate to increase size of the new temp file without writing to file
-
-	// Create the file
-	file, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add this to the temporary file list
-	d.appendToTempFileList(tempFilePath)
-
-	return file, nil
-}
-
-func (d *Download) incrementTempFileAppender() {
-	_ = d.setTempFileNameAppender(d.tempFileNameAppender + 1)
-}
-
-func (d *Download) appendToTempFileList(tempFilePath string) {
-	_ = d.setTempFileList(append(d.tempFileList, tempFilePath))
-}
-
-// DEBUG
-
-// DebugUrl prints download URL details.
-func (d *Download) DebugUrl() {
-	// Debug print URL
-	fmt.Println("URL DEBUG:")
-	fmt.Println("URL scheme:", d.downloadURL.Scheme)
-	fmt.Println("URL host:", d.downloadURL.Host)
-	fmt.Println("URL Path:", d.downloadURL.Path)
-	fmt.Println()
-}
-
-// DebugHeader prints download header details.
-func (d *Download) DebugHeader() {
-	// Debug print response header
-	fmt.Println("HEADER DEBUG:")
-	fmt.Println("Is download initialized:", d.isDownloadInitialized)
-	fmt.Println("Response content length:", d.response.ContentLength)
-	fmt.Println("Response headers:", d.response.Header)
-	fmt.Println("Response status code:", d.response.StatusCode)
-	fmt.Println()
 }
