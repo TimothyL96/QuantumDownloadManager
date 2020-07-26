@@ -131,6 +131,8 @@ func (d *Download) Download() error {
 	// Flag the download has started
 	_ = d.setIsDownloadStarted(true)
 
+	// Create a placeholder file with the download save file name
+
 	// Start the download
 	if d.IsConcurrentConnectionAllowed() == allowed && d.MaxNrOfConcurrentConnection() > 1 {
 		return d.StartConcurrentDownload()
@@ -155,14 +157,12 @@ func (d *Download) StartAtomicDownload() error {
 	_ = d.setIsDownloadRunning(true)
 
 	// Write the data to disk
-	// If file size is 1 GB and user has 1.2 GB disk space left,
-	// This might cause the space used to 2 GB with 1 GB each for save file and temporary file.
-	// Could implement a read line by line and removing the read line from temporary file
-	// to allow user with 1.2 GB disk space download a 1 GB file
 	written, err := io.Copy(tempFile, d.response.Body)
 	if err != nil {
 		return err
 	}
+
+	// Rename temp file to save file name
 
 	// Close temp file
 	_ = tempFile.Close()
@@ -235,6 +235,11 @@ func (d *Download) StartConcurrentDownload() error {
 			wg.Add(1)
 
 			// Write the specific data range to disk
+			//
+			// If file size is 1 GB and user has 1.2 GB disk space left,
+			// This might cause the space used to become 2 GB with 1 GB for save file and 1 GB for other temporary files.
+			// Could implement a read line by line and removing the read line from temporary files
+			// to allow user with 1.2 GB disk space download a 1 GB file concurrently
 			_, _ = io.Copy(file, downloader.response.Body)
 
 			// Close the temporary file
