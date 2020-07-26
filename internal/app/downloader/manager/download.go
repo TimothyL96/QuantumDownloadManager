@@ -221,7 +221,7 @@ func (d *Download) StartConcurrentDownload() error {
 		// 206 - Successful request
 		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range)
 
-		// Start the concurrent download of the new bytes range calculated above
+		// Start the concurrent download with the new bytes range calculated above
 		// Use a closure in the below anonymous function / goroutine : (i int)
 		// to store the concurrent connection index (Same value as 'i' in the current for loop)
 		go func(i int) {
@@ -252,7 +252,7 @@ func (d *Download) StartConcurrentDownload() error {
 	// Combine files
 	fmt.Println("Temp file list:", d.tempFileList)
 
-	// Open the file to save and combine the completed download
+	// Open the download save file to save and combine the completed download parts
 	// Currently, replace file if exist, can append a value later on: filename_1
 	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -275,6 +275,7 @@ func (d *Download) StartConcurrentDownload() error {
 		_ = file1.Close()
 
 		// Remove the temporary file that has been copied
+		// If combine all bytes before deleting all temporary files, file size could go double.
 		if err = os.Remove(file1.Name()); err != nil {
 			fmt.Println("Failed to delete temporary file:", err)
 		}
