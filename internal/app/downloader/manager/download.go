@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 
 	fileUtils "github.com/ttimt/QuantumDownloadManager/internal/app/downloader/util/file"
 )
@@ -20,6 +22,21 @@ func (d *Download) InitializeDownload() error {
 		return errors.New("download is currently running")
 	}
 
+	// Send a HTTP request to get the request header
+	if err := d.sendHTTPRequest(nil); err != nil {
+		return err
+	}
+
+	// Process the received request header
+	if err := d.processRequestHeader(); err != nil {
+		return err
+	}
+
+	// Set download as initialized
+	return d.setIsDownloadInitialized(true)
+}
+
+func (d *Download) sendHTTPRequest(header map[string]string) error {
 	// Setup new context for stopping download
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	_ = d.setCtx(ctx)
@@ -34,6 +51,18 @@ func (d *Download) InitializeDownload() error {
 		return err
 	}
 
+	// Add custom header to the request
+	if header != nil {
+		for k, v := range header {
+			req.Header.Add(k, v)
+		}
+	}
+
+	// DEBUG: Print request header
+	fmt.Println("Request header")
+	fmt.Println(req.Header)
+	fmt.Println()
+
 	// Make the request to get the response header
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -41,19 +70,12 @@ func (d *Download) InitializeDownload() error {
 	}
 	_ = d.setResponse(response)
 
-	// Process the received request header
-	err = d.processRequestHeader()
-	if err != nil {
-		return err
-	}
-
-	// Set download as initialized
-	return d.setIsDownloadInitialized(true)
+	return nil
 }
 
 func (d *Download) processRequestHeader() error {
 	// Partial download reference:
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Ranges
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests
 	//
 	// Content-Length header - If value is -1, we do not know the file size
 	// and unable to split it to download concurrently or resume download
@@ -99,7 +121,7 @@ func (d *Download) processRequestHeader() error {
 // Download starts the download first time.
 func (d *Download) Download() error {
 	// Test
-	_ = d.setIsConcurrentConnectionAllowed(notAllowed)
+	// _ = d.setIsConcurrentConnectionAllowed(notAllowed)
 
 	// Block if download has started before
 	if d.IsDownloadStarted() {
@@ -110,7 +132,7 @@ func (d *Download) Download() error {
 	_ = d.setIsDownloadStarted(true)
 
 	// Start the download
-	if d.IsConcurrentConnectionAllowed() == allowed {
+	if d.IsConcurrentConnectionAllowed() == allowed && d.MaxNrOfConcurrentConnection() > 1 {
 		return d.StartConcurrentDownload()
 	}
 
@@ -138,6 +160,9 @@ func (d *Download) StartAtomicDownload() error {
 		return err
 	}
 
+	// Close temp file
+	_ = tempFile.Close()
+
 	log.Printf("DEBUG: Written %d out of %d bytes", written, d.response.ContentLength)
 
 	return nil
@@ -145,30 +170,100 @@ func (d *Download) StartAtomicDownload() error {
 
 // StartConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
 func (d *Download) StartConcurrentDownload() error {
-	// data := make([]byte, res.ContentLength)
-	//
-	// fmt.Println("Now start streaming")
-	// resBodySize, err := io.ReadFull(res.Body, data)
-	// fmt.Println("Streaming complete")
+	contentLength := d.response.ContentLength
+	var currentByte int64 = 0
 
-	// if err != nil {
-	// 	fmt.Println("Read body size", resBodySize)
-	// 	fmt.Println("Error:", err)
-	// }
-	//
-	// downloadedFile, err := os.OpenFile("D:\\Timothy\\Desktop\\download2.mp4", os.O_CREATE|os.O_RDWR, os.ModePerm)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//
-	// writeSize, err := downloadedFile.Write(data)
-	//
-	// if err != nil {
-	// 	fmt.Println("Write size", writeSize)
-	// 	panic(err)
-	// }
-	//
-	// cancel()
+	// Sync wait group
+	var wg sync.WaitGroup
+
+	for i := d.MaxNrOfConcurrentConnection(); i > 0; i-- {
+		// Create a new downloader with custom header to specify the custom bytes range for concurrent download
+		downloader, err := NewDownload(
+			SaveDirectory(d.SaveDirectory()),
+			SaveFileName(d.SaveFileName()),
+			NrOfConcurrentDownload(1),
+			DownloadURL(d.DownloadURL()))
+		if err != nil {
+			return err
+		}
+
+		// Get a temporary file name
+		file, err := downloader.CreateTemporaryFile()
+		if err != nil {
+			return err
+		}
+
+		// Calculate bytes to get by adding the current bytes range
+		var bytesToGet int64
+
+		// If this is not the last concurrent connection
+		if i != 1 {
+			bytesToGet = int64(math.Floor(float64(contentLength / int64(i))))
+		} else {
+			// Append remaining bytes to this request
+			bytesToGet = contentLength
+		}
+
+		// Send a HTTP request to get header
+		if err = downloader.sendHTTPRequest(map[string]string{"Range": "bytes=" +
+			strconv.FormatInt(currentByte, 10) +
+			"-" +
+			strconv.FormatInt(currentByte+(bytesToGet-1), 10)}); err != nil {
+			return err
+		}
+
+		// Update remaining content length and current byte
+		contentLength -= bytesToGet
+		currentByte += bytesToGet
+
+		// Check status code is 206 before moving to next concurrent connection
+		// 200 - Partial download not supported
+		// 206 - Successful request
+		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range
+
+		go func(i int) {
+			fmt.Println("***** Starting concurrent download:", i)
+			wg.Add(1)
+
+			// Write the data to disk
+			_, _ = io.Copy(file, downloader.response.Body)
+
+			// Close file
+			_ = file.Close()
+
+			fmt.Println("Closing concurrent download:", i)
+
+			wg.Done()
+		}(i)
+
+		// Add to temp file list
+		d.appendToTempFileList(file.Name())
+	}
+
+	wg.Wait()
+
+	// Combine files
+	fmt.Println("Temp file list:", d.tempFileList)
+
+	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Writing to file:", file.Name())
+	for _, v := range d.tempFileList {
+		file1, err := os.OpenFile(v, os.O_RDONLY, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+		_, _ = io.Copy(file, file1)
+		_ = file1.Close()
+
+		// Remove the temporary file that has been copied
+		err = os.Remove(file1.Name())
+		if err != nil {
+			fmt.Println("Failed to delete temporary file:", err)
+		}
+	}
 
 	return nil
 }
@@ -219,7 +314,7 @@ func (d *Download) CreateTemporaryFile() (*os.File, error) {
 	// Use os.truncate to increase size of the new temp file without writing to file
 
 	// Create the file
-	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	file, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}

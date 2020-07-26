@@ -15,7 +15,7 @@ func main() {
 func test() {
 	// Test
 	const (
-		nrOfConcurrentDownload = 1
+		nrOfConcurrentDownload = 4
 		fileName               = "download.mp4"
 		directory              = `D:\Timothy/Desktop\`
 	)
@@ -54,11 +54,13 @@ func test() {
 		panic(err)
 	}
 
-	fmt.Println(downloader)
 	// Retrieve download details
 	if err = downloader.InitializeDownload(); err != nil {
 		panic(err)
 	}
+
+	downloader.DebugHeader()
+	fmt.Println(downloader)
 
 	// Start the download
 	err = downloader.Download()
