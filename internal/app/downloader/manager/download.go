@@ -131,7 +131,10 @@ func (d *Download) Download() error {
 	// Flag the download has started
 	_ = d.setIsDownloadStarted(true)
 
-	// Create a placeholder file with the download save file name
+	// Create a place holder file with the same name as the download save file and path
+	// Check file exist before creating the place holder file
+	placeholderFile, _ := os.Create(d.SaveFullPath())
+	_ = placeholderFile.Close()
 
 	// Start the download
 	if d.IsConcurrentConnectionAllowed() == allowed && d.MaxNrOfConcurrentConnection() > 1 {
@@ -146,6 +149,8 @@ func (d *Download) Download() error {
 func (d *Download) StartAtomicDownload() error {
 	// Check if download has been started before, and resume the last pause state
 	// To be done when implementing pause feature
+
+	fmt.Println("Starting atomic download")
 
 	// Create downloader single temporary file
 	tempFile, err := d.CreateTemporaryFile()
@@ -162,18 +167,24 @@ func (d *Download) StartAtomicDownload() error {
 		return err
 	}
 
-	// Rename temp file to save file name
-
 	// Close temp file
 	_ = tempFile.Close()
 
-	log.Printf("DEBUG: Written %d out of %d bytes", written, d.response.ContentLength)
+	// Rename temp file to save file name
+	if err = os.Rename(tempFile.Name(), d.SaveFullPath()); err != nil {
+		return err
+	}
+
+	log.Printf("DEBUG: File downloaded with a single connection."+
+		"\nWritten %d out of %d bytes", written, d.response.ContentLength)
 
 	return nil
 }
 
 // StartConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
 func (d *Download) StartConcurrentDownload() error {
+	fmt.Println("Starting concurrent download")
+
 	contentLength := d.response.ContentLength
 	var currentByte int64 = 0
 
@@ -199,6 +210,8 @@ func (d *Download) StartConcurrentDownload() error {
 
 		// Calculate bytes to get per concurrent connection
 		var bytesToGet int64
+
+		// Set a minimum bytes per temporary file / concurrent connection ?
 
 		// If this is not the last concurrent connection
 		if i != 1 {
@@ -230,6 +243,9 @@ func (d *Download) StartConcurrentDownload() error {
 		// to store the concurrent connection index (Same value as 'i' in the current for loop)
 		go func(i int) {
 			fmt.Println("***** Starting concurrent download:", i)
+
+			// DEBUG
+			downloader.DebugHeader()
 
 			// Track current running goroutine to its completion
 			wg.Add(1)
@@ -313,7 +329,7 @@ func (d *Download) Abort() error {
 	return nil
 }
 
-// CreateTemporaryFile xxx.
+// CreateTemporaryFile creates a temporary file with a unique name appended by a number.
 func (d *Download) CreateTemporaryFile() (*os.File, error) {
 	// Increment temporary file number
 	d.incrementTempFileAppender()
