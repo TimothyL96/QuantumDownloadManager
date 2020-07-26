@@ -14,9 +14,9 @@ func IsFileExist(path string) bool {
 	return !os.IsNotExist(err)
 }
 
-// FixPath returns the given path trimmed and cleaned.
-// Different OSes slashes will be handled.
-func FixPath(path string) string {
+// CleanPath returns the given path trimmed and cleaned.
+// Different OSes directory slashes will be handled.
+func CleanPath(path string) string {
 	// Trim any spaces at the edge
 	path = strings.TrimSpace(path)
 
@@ -24,4 +24,11 @@ func FixPath(path string) string {
 	path = filepath.Clean(path)
 
 	return path
+}
+
+// IsCleanedFileExist cleans the path before checking whether the given file or directory exists.
+func IsCleanedFileExist(path string) bool {
+	path = CleanPath(path)
+
+	return IsFileExist(path)
 }
