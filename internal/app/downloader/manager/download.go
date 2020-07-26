@@ -155,6 +155,10 @@ func (d *Download) StartAtomicDownload() error {
 	_ = d.setIsDownloadRunning(true)
 
 	// Write the data to disk
+	// If file size is 1 GB and user has 1.2 GB disk space left,
+	// This might cause the space used to 2 GB with 1 GB each for save file and temporary file.
+	// Could implement a read line by line and removing the read line from temporary file
+	// to allow user with 1.2 GB disk space download a 1 GB file
 	written, err := io.Copy(tempFile, d.response.Body)
 	if err != nil {
 		return err
