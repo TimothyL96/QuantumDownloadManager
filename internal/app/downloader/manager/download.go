@@ -95,7 +95,7 @@ func (d *Download) processRequestHeader() error {
 	return nil
 }
 
-// startAtomicDownload download the file without any concurrent connection.
+// startAtomicDownload or sequential download is downloading the file without any concurrent connection.
 func (d *Download) startAtomicDownload() {
 	// Check if download has been started before, and resume the last pause state
 	// To be done when implementing pause feature
