@@ -25,8 +25,8 @@ func (d *Download) Initialize() error {
 	return d.setIsDownloadInitialized(true)
 }
 
-// Download starts the download first time.
-func (d *Download) Download() error {
+// Start starts the download first time.
+func (d *Download) Start() error {
 	// Test
 	// _ = d.setIsConcurrentConnectionAllowed(notAllowed)
 
@@ -43,13 +43,12 @@ func (d *Download) Download() error {
 
 	// Start the download concurrently
 	if (d.IsConcurrentConnectionAllowed() == allowed || d.IsConcurrentConnectionAllowed() == unknown) && d.MaxNrOfConcurrentConnection() > 1 {
-		go d.startConcurrentDownload()
+		return d.startConcurrentDownload()
 	}
 
 	// Non concurrent single connection download
-	go d.startAtomicDownload()
-
-	return nil
+	return d.startSequentialDownload()
+	// return nil
 }
 
 // Pause will pause the current download if it is currently running.
@@ -68,6 +67,12 @@ func (d *Download) Resume() error {
 
 // Abort will cancel the current download.
 func (d *Download) Abort() {
+	// Abort all the children
+	for _, v := range d.children {
+		v.ctxCancel()
+	}
+
+	// Abort the caller download instance
 	d.ctxCancel()
 	_ = d.setIsDownloadAborted(true)
 	_ = d.setIsDownloadRunning(false)
@@ -75,6 +80,6 @@ func (d *Download) Abort() {
 
 // complete will update the download status to complete.
 func (d *Download) complete() {
-	_ = d.setIsDownloadCompleted(true)
+	_ = d.setIsDownloadComplete(true)
 	_ = d.setIsDownloadRunning(false)
 }

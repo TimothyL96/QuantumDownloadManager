@@ -15,7 +15,7 @@ func main() {
 func test() {
 	// Test
 	const (
-		nrOfConcurrentDownload = 64
+		nrOfConcurrentDownload = 8
 		fileName               = "download.mp4"
 		directory              = `D:\Timothy/Desktop\`
 	)
@@ -59,13 +59,14 @@ func test() {
 		panic(err)
 	}
 
-	downloader.DebugHeader()
 	fmt.Println(downloader)
+	downloader.DebugHeader()
+	downloader.DebugFileSize()
 
 	// Start the download
-	err = downloader.Download()
+	err = downloader.Start()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Download complete")
+	fmt.Println("Download complete:", downloader.IsDownloadComplete())
 }

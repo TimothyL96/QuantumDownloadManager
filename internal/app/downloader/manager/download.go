@@ -83,6 +83,9 @@ func (d *Download) processRequestHeader() error {
 			_ = d.setIsConcurrentConnectionAllowed(unknown)
 			_ = d.setIsPauseAllowed(unknown)
 		}
+
+		// Update file size
+		_ = d.setFileSize(d.response.ContentLength)
 	} else {
 		// Unknown content length
 		_ = d.setIsConcurrentConnectionAllowed(notAllowed)
@@ -95,12 +98,12 @@ func (d *Download) processRequestHeader() error {
 	return nil
 }
 
-// startAtomicDownload or sequential download is downloading the file without any concurrent connection.
-func (d *Download) startAtomicDownload() {
+// startSequentialDownload downloads the file without any concurrent connection.
+func (d *Download) startSequentialDownload() error {
 	// Check if download has been started before, and resume the last pause state
 	// To be done when implementing pause feature
 
-	fmt.Println("Starting atomic download")
+	fmt.Println("Starting sequential download")
 
 	// Set the download as running
 	_ = d.setIsDownloadRunning(true)
@@ -109,7 +112,7 @@ func (d *Download) startAtomicDownload() {
 	tempFile, err := d.createTemporaryFile()
 	if err != nil {
 		d.Abort()
-		return
+		return err
 	}
 
 	// Close temp file
@@ -119,13 +122,13 @@ func (d *Download) startAtomicDownload() {
 	written, err := io.Copy(tempFile, d.response.Body)
 	if err != nil {
 		d.Abort()
-		return
+		return err
 	}
 
 	// Rename temp file to download save file name
 	if err = os.Rename(tempFile.Name(), d.SaveFullPath()); err != nil {
 		d.Abort()
-		return
+		return err
 	}
 
 	log.Printf("DEBUG: File downloaded with a single connection."+
@@ -133,6 +136,8 @@ func (d *Download) startAtomicDownload() {
 
 	// Set download completed
 	d.complete()
+
+	return nil
 }
 
 // startConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
@@ -162,6 +167,8 @@ func (d *Download) startConcurrentDownload() error {
 		// Get a temporary file name
 		file, err := downloader.createTemporaryFile()
 		if err != nil {
+			downloader.Abort()
+			d.Abort()
 			return err
 		}
 
@@ -195,9 +202,14 @@ func (d *Download) startConcurrentDownload() error {
 		// 206 - Successful request
 		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range)
 		if downloader.response.StatusCode != 206 {
+			downloader.Abort()
+			d.Abort()
 			return errors.New("Return status code is not 206 partial download but:" +
 				strconv.Itoa(downloader.response.StatusCode))
 		}
+
+		// Add to temp file list
+		d.appendToTempFileList(file.Name())
 
 		// Start the concurrent download with the new bytes range calculated above
 		// Use a closure in the below anonymous function / goroutine : (i int)
@@ -227,9 +239,6 @@ func (d *Download) startConcurrentDownload() error {
 			// Set current goroutine as completed
 			wg.Done()
 		}(i)
-
-		// Add to temp file list
-		d.appendToTempFileList(file.Name())
 	}
 
 	// Wait for all tracked goroutines to be completed
@@ -268,7 +277,7 @@ func (d *Download) startConcurrentDownload() error {
 	}
 
 	// Set download as completed
-	_ = d.setIsDownloadCompleted(true)
+	_ = d.setIsDownloadComplete(true)
 
 	return nil
 }

@@ -1,9 +1,9 @@
 package manager
 
-// ConfigOption is the signature of functional option for Download.
+// ConfigOption is the signature of functional option for Start.
 type ConfigOption func(d *Download) error
 
-// NewDownload create and returns a new Download instance with configurations from the parameter input.
+// NewDownload create and returns a new Start instance with configurations from the parameter input.
 func NewDownload(configurations ...ConfigOption) (*Download, error) {
 	download := &Download{}
 
