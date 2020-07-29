@@ -22,7 +22,7 @@ const (
 
 // Download is a session of a download.
 type Download struct {
-	// Download details
+	// Start details
 	downloadURL                 *url.URL
 	maxNrOfConcurrentConnection int
 	saveDirectory               string
@@ -34,11 +34,11 @@ type Download struct {
 	isPauseAllowed                FlagState
 	isConcurrentConnectionAllowed FlagState
 
-	// Download status
+	// Start status
 	isDownloadInitialized bool
 	isDownloadStarted     bool // Has the download been started once before
 	isDownloadRunning     bool
-	isDownloadCompleted   bool
+	isDownloadComplete    bool
 	isDownloadAborted     bool
 
 	// Temporary files variables
@@ -47,11 +47,15 @@ type Download struct {
 
 	// Response
 	response *http.Response
-	fileSize int64
+	fileSize file.Size
 
 	// Context
 	ctx       context.Context
 	ctxCancel func()
+
+	// Relation
+	parent   *Download
+	children []*Download
 }
 
 // DownloadURL returns current download URL.
@@ -213,12 +217,12 @@ func (d *Download) setSaveFullPath() error {
 
 // FileSize returns the file size for the download.
 // If download details is not retrieved, file size should be 0.
-func (d *Download) FileSize() int64 {
+func (d *Download) FileSize() file.Size {
 	return d.fileSize
 }
 
 func (d *Download) setFileSize(fileSize int64) error {
-	d.fileSize = fileSize
+	d.fileSize = file.Size(fileSize)
 
 	return nil
 }
@@ -280,16 +284,16 @@ func (d *Download) setIsDownloadRunning(isDownloadRunning bool) error {
 
 // IsDownloadPaused returns a boolean indicating whether the download is paused.
 func (d *Download) IsDownloadPaused() bool {
-	if !d.IsDownloadRunning() && !d.IsDownloadCompleted() && !d.isDownloadAborted {
+	if !d.IsDownloadRunning() && !d.IsDownloadComplete() && !d.isDownloadAborted {
 		return true
 	}
 
 	return false
 }
 
-// IsDownloadCompleted returns a boolean indicating whether the download has been completed.
-func (d *Download) IsDownloadCompleted() bool {
-	return d.isDownloadCompleted
+// IsDownloadComplete returns a boolean indicating whether the download has been completed.
+func (d *Download) IsDownloadComplete() bool {
+	return d.isDownloadComplete
 }
 
 // IsDownloadAborted returns a boolean indicating whether the download has been completed.
@@ -303,9 +307,8 @@ func (d *Download) setIsDownloadAborted(isDownloadAborted bool) error {
 	return nil
 }
 
-func (d *Download) setIsDownloadCompleted(isDownloadCompleted bool) error {
-	_ = d.setIsDownloadRunning(false)
-	d.isDownloadCompleted = isDownloadCompleted
+func (d *Download) setIsDownloadComplete(isDownloadComplete bool) error {
+	d.isDownloadComplete = isDownloadComplete
 
 	return nil
 }
@@ -336,6 +339,29 @@ func (d *Download) setCtxCancel(ctxCancel func()) error {
 
 func (d *Download) setResponse(response *http.Response) error {
 	d.response = response
+
+	return nil
+}
+
+// setParent sets the parent and also update the children of the parent.
+func (d *Download) setParent(parent *Download) error {
+	d.parent = parent
+
+	return nil
+}
+
+// setChildren sets the children
+func (d *Download) setChildren(children []*Download) error {
+	d.children = children
+
+	return nil
+}
+
+// addChild adds a child to the caller parent instance
+// and update the child parent to the caller instance.
+func (d *Download) addChild(child *Download) error {
+	_ = child.setParent(d)
+	_ = d.setChildren(append(d.children, child))
 
 	return nil
 }
@@ -384,7 +410,7 @@ func (d *Download) String() string {
 	sb.WriteString("\n")
 
 	sb.WriteString("Is download completed:")
-	sb.WriteString(strconv.FormatBool(d.IsDownloadCompleted()))
+	sb.WriteString(strconv.FormatBool(d.IsDownloadComplete()))
 	sb.WriteString("\n")
 
 	return sb.String()
