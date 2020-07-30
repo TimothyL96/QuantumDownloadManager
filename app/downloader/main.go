@@ -15,7 +15,7 @@ func main() {
 func test() {
 	// Test
 	const (
-		nrOfConcurrentDownload = 8
+		nrOfConcurrentDownload = 1
 		fileName               = "download.mp4"
 		directory              = `D:\Timothy/Desktop\`
 	)
