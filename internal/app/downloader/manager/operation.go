@@ -41,14 +41,7 @@ func (d *Download) Start() error {
 	// Create a place holder file
 	d.createPlaceHolderFile()
 
-	// Start the download concurrently
-	if (d.IsConcurrentConnectionAllowed() == allowed || d.IsConcurrentConnectionAllowed() == unknown) && d.MaxNrOfConcurrentConnection() > 1 {
-		return d.startConcurrentDownload()
-	}
-
-	// Non concurrent single connection download
-	return d.startSequentialDownload()
-	// return nil
+	return d.startDownload()
 }
 
 // Pause will pause the current download if it is currently running.

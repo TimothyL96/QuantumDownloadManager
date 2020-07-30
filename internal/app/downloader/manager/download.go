@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -98,51 +97,9 @@ func (d *Download) processRequestHeader() error {
 	return nil
 }
 
-// startSequentialDownload downloads the file without any concurrent connection.
-func (d *Download) startSequentialDownload() error {
-	// Check if download has been started before, and resume the last pause state
-	// To be done when implementing pause feature
-
-	fmt.Println("Starting sequential download")
-
-	// Set the download as running
-	_ = d.setIsDownloadRunning(true)
-
-	// Create downloader single temporary file
-	tempFile, err := d.createTemporaryFile()
-	if err != nil {
-		d.Abort()
-		return err
-	}
-
-	// Close temp file
-	defer tempFile.Close()
-
-	// Write the data to disk
-	written, err := io.Copy(tempFile, d.response.Body)
-	if err != nil {
-		d.Abort()
-		return err
-	}
-
-	// Rename temp file to download save file name
-	if err = os.Rename(tempFile.Name(), d.SaveFullPath()); err != nil {
-		d.Abort()
-		return err
-	}
-
-	log.Printf("DEBUG: File downloaded with a single connection."+
-		"\nWritten %d out of %d bytes", written, d.response.ContentLength)
-
-	// Set download completed
-	d.complete()
-
-	return nil
-}
-
-// startConcurrentDownload download the file part by part concurrently with the number of concurrent connection set.
-func (d *Download) startConcurrentDownload() error {
-	fmt.Println("Starting concurrent download")
+// startDownload starts the download.
+func (d *Download) startDownload() error {
+	fmt.Println("Starting download")
 
 	// Set the download as running
 	_ = d.setIsDownloadRunning(true)
@@ -152,6 +109,12 @@ func (d *Download) startConcurrentDownload() error {
 
 	// Sync wait group
 	var wg sync.WaitGroup
+
+	if d.IsConcurrentConnectionAllowed() == notAllowed {
+		_ = d.SetMaxNrOfConcurrentConnection(1)
+	} else if d.IsConcurrentConnectionAllowed() == unknown {
+		// Unknown check if return is 206
+	}
 
 	for i := d.MaxNrOfConcurrentConnection(); i > 0; i-- {
 		// Create a new downloader with custom header to specify the custom bytes range for concurrent download
@@ -202,11 +165,11 @@ func (d *Download) startConcurrentDownload() error {
 		// 206 - Successful request
 		// 416 - Requested Range Not Satisfiable (Not of the requested range values overlap the available range)
 		if downloader.response.StatusCode != 206 {
-			downloader.Abort()
-			d.Abort()
-			return errors.New("Return status code is not 206 partial download but:" +
+			fmt.Println("Return status code is not 206 partial download but:" +
 				strconv.Itoa(downloader.response.StatusCode))
 		}
+
+		fmt.Println("*********** Response status code:", downloader.response.StatusCode)
 
 		// Add to temp file list
 		d.appendToTempFileList(file.Name())
@@ -214,14 +177,15 @@ func (d *Download) startConcurrentDownload() error {
 		// Start the concurrent download with the new bytes range calculated above
 		// Use a closure in the below anonymous function / goroutine : (i int)
 		// to store the concurrent connection index (Same value as 'i' in the current for loop)
+
+		// Track current running goroutine to its completion
+		wg.Add(1)
+
 		go func(i int) {
 			fmt.Println("***** Starting concurrent download:", i)
 
 			// DEBUG
 			downloader.DebugHeader()
-
-			// Track current running goroutine to its completion
-			wg.Add(1)
 
 			// Write the specific data range to disk
 			//
@@ -239,50 +203,82 @@ func (d *Download) startConcurrentDownload() error {
 			// Set current goroutine as completed
 			wg.Done()
 		}(i)
+
+		// Stop adding concurrent connection if return is 200 instead of 206
+		if downloader.response.StatusCode == 200 {
+			break
+		}
 	}
 
 	// Wait for all tracked goroutines to be completed
 	wg.Wait()
 
-	// Combine files
-	fmt.Println("Temp file list:", d.tempFileList)
-
-	// Open the download save file to save and combine the completed download parts
-	// Currently, replace file if exist, can append a value later on: filename_1
-	file, err := os.OpenFile(d.SaveFullPath(), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Writing to file:", file.Name())
-
-	// Go through each temporary file
-	for _, v := range d.tempFileList {
-		file1, err := os.OpenFile(v, os.O_RDONLY, os.ModePerm)
-		if err != nil {
-			panic(err)
-		}
-
-		// Copy all bytes from the temporary file to the final download file
-		_, _ = io.Copy(file, file1)
-
-		// Close the temporary file after copying
-		_ = file1.Close()
-
-		// Remove the temporary file that has been copied
-		// If combine all bytes before deleting all temporary files, file size could go double.
-		if err = os.Remove(file1.Name()); err != nil {
-			fmt.Println("Failed to delete temporary file:", err)
-		}
+	// Combine files and get the final download file
+	if err := d.combineFiles(); err != nil {
+		return err
 	}
 
 	// Set download as completed
-	_ = d.setIsDownloadComplete(true)
+	d.complete()
 
 	return nil
 }
 
 // streamData xxx.
 func (d *Download) streamData() error {
+	return nil
+}
+
+// combineFiles combines all temporary files together to form the final download file.
+func (d *Download) combineFiles() error {
+	// Combine files
+	fmt.Println("Writing to file:")
+
+	// Must have at least 1 temporary file
+	if len(d.tempFileList) < 1 {
+		return errors.New("must have at least 1 temporary file")
+	}
+
+	// Open the first file to append other data onto it
+	firstTempFile, err := os.OpenFile(d.tempFileList[0], os.O_WRONLY|os.O_APPEND, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Loop through other temporary files and put the data into the first file
+	for _, v := range d.tempFileList[1:] {
+		// Open current file
+		f, err := os.OpenFile(v, os.O_RDONLY, os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(firstTempFile, f)
+		if err != nil {
+			return err
+		}
+
+		// Close the file at the end
+		f.Close()
+	}
+
+	// Close the file at the end
+	firstTempFile.Close()
+
+	// Rename the file to final download file
+	if err = os.Rename(firstTempFile.Name(), d.SaveFullPath()); err != nil {
+		d.Abort()
+		return err
+	}
+
+	// Delete all temporary files
+	for _, v := range d.tempFileList[1:] {
+		if err := os.Remove(v); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("Combine temporary files done")
+
 	return nil
 }
