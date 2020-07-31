@@ -34,11 +34,6 @@ func (d *Download) sendHTTPRequest(header map[string]string) error {
 		req.Header.Add(k, v)
 	}
 
-	// DEBUG: Print request header
-	fmt.Println("Request header")
-	fmt.Println(req.Header)
-	fmt.Println()
-
 	// Make the request to get the response header
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -140,12 +135,12 @@ func (d *Download) startDownload() error {
 
 		// Set a minimum bytes per temporary file / concurrent connection ?
 
+		// Append remaining bytes to this request for the last concurrent connection
+		bytesToGet = contentLength
+
 		// If this is not the last concurrent connection
 		if i != 1 {
 			bytesToGet = int64(math.Floor(float64(contentLength) / float64(i)))
-		} else {
-			// Append remaining bytes to this request for the last concurrent connection
-			bytesToGet = contentLength
 		}
 
 		// Send a HTTP request with custom header to get the new response header
@@ -221,11 +216,6 @@ func (d *Download) startDownload() error {
 	// Set download as completed
 	d.complete()
 
-	return nil
-}
-
-// streamData xxx.
-func (d *Download) streamData() error {
 	return nil
 }
 
