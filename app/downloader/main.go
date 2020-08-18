@@ -35,7 +35,7 @@ func test() {
 	url := "https://file-examples-com.github.io/uploads/2017/04/file_example_MP4_1920_18MG.mp4"
 	fmt.Printf("URL is: %s\n\n", url)
 
-	// Initialize downloader new download
+	// Initialize new download
 	downloader, err := manager.NewDownload(
 		manager.DownloadURL(url),
 		manager.NrOfConcurrentDownload(userSetting1.NrOfConcurrentConnection()),

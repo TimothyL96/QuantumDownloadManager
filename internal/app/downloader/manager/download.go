@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -87,7 +86,27 @@ func (d *Download) processRequestHeader() error {
 	}
 
 	// Get suggested default file name from header - Content-Disposition
-	// d.setDefaultFileName(...)
+	// Get the filename and extension.
+	// Ex: Content-Disposition: form-data; name="fieldName"; filename="filename.jpg"
+	//
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition
+	//
+	contentDisposition, ok := d.response.Header["Accept-Ranges"]
+	if ok {
+		_ = d.setDefaultFileName(contentDisposition[0])
+	} else {
+		// Content-Type:[video/mp4]
+		// Get file extension if Content-Disposition not specified
+		//
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type
+		//
+		contentType, ok := d.response.Header["Content-Type"]
+		if ok {
+			_ = contentType[0] // TODO
+		} else {
+			// Try to get file name and extension from URL
+		}
+	}
 
 	return nil
 }
@@ -97,12 +116,10 @@ func (d *Download) startDownload() error {
 	fmt.Println("Starting download")
 
 	// Set the download as running
-	_ = d.setIsDownloadRunning(true)
+	_ = d.Resume()
 
 	contentLength := d.response.ContentLength
 	var currentByte int64 = 0
-
-	// Sync wait group
 	var wg sync.WaitGroup
 
 	if d.IsConcurrentConnectionAllowed() == notAllowed {
@@ -130,13 +147,14 @@ func (d *Download) startDownload() error {
 			return err
 		}
 
+		// Add to temp file list
+		d.appendToTempFileList(file.Name())
+
 		// Calculate bytes to get per concurrent connection
-		var bytesToGet int64
+		// Append remaining bytes to this request for the last concurrent connection
+		bytesToGet := contentLength
 
 		// Set a minimum bytes per temporary file / concurrent connection ?
-
-		// Append remaining bytes to this request for the last concurrent connection
-		bytesToGet = contentLength
 
 		// If this is not the last concurrent connection
 		if i != 1 {
@@ -164,40 +182,13 @@ func (d *Download) startDownload() error {
 				strconv.Itoa(downloader.response.StatusCode))
 		}
 
-		fmt.Println("*********** Response status code:", downloader.response.StatusCode)
-
-		// Add to temp file list
-		d.appendToTempFileList(file.Name())
-
 		// Start the concurrent download with the new bytes range calculated above
 		// Use a closure in the below anonymous function / goroutine : (i int)
 		// to store the concurrent connection index (Same value as 'i' in the current for loop)
 
 		// Track current running goroutine to its completion
 		wg.Add(1)
-
-		go func(i int) {
-			fmt.Println("***** Starting concurrent download:", i)
-
-			// DEBUG
-			downloader.DebugHeader()
-
-			// Write the specific data range to disk
-			//
-			// If file size is 1 GB and user has 1.2 GB disk space left,
-			// This might cause the space used to become 2 GB with 1 GB for save file and 1 GB for other temporary files.
-			// Could implement a read line by line and removing the read line from temporary files
-			// to allow user with 1.2 GB disk space download a 1 GB file concurrently
-			_, _ = io.Copy(file, downloader.response.Body)
-
-			// Close the temporary file
-			_ = file.Close()
-
-			fmt.Println("Closing concurrent download:", i)
-
-			// Set current goroutine as completed
-			wg.Done()
-		}(i)
+		go downloader.streamDownload(file, &wg)
 
 		// Stop adding concurrent connection if return is 200 instead of 206
 		if downloader.response.StatusCode == 200 {
@@ -219,56 +210,18 @@ func (d *Download) startDownload() error {
 	return nil
 }
 
-// combineFiles combines all temporary files together to form the final download file.
-func (d *Download) combineFiles() error {
-	// Combine files
-	fmt.Println("Writing to file:")
+func (d *Download) streamDownload(file *os.File, wg *sync.WaitGroup) {
+	// Write the specific data range to disk
+	//
+	// If file size is 1 GB and user has 1.2 GB disk space left,
+	// This might cause the space used to become 2 GB with 1 GB for save file and 1 GB for other temporary files.
+	// Could implement a read line by line and removing the read line from temporary files
+	// to allow user with 1.2 GB disk space download a 1 GB file concurrently
+	_, _ = io.Copy(file, d.response.Body)
 
-	// Must have at least 1 temporary file
-	if len(d.tempFileList) < 1 {
-		return errors.New("must have at least 1 temporary file")
-	}
+	// Close the temporary file
+	_ = file.Close()
 
-	// Open the first file to append other data onto it
-	firstTempFile, err := os.OpenFile(d.tempFileList[0], os.O_WRONLY|os.O_APPEND, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
-	// Loop through other temporary files and put the data into the first file
-	for _, v := range d.tempFileList[1:] {
-		// Open current file
-		f, err := os.OpenFile(v, os.O_RDONLY, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(firstTempFile, f)
-		if err != nil {
-			return err
-		}
-
-		// Close the file at the end
-		f.Close()
-	}
-
-	// Close the file at the end
-	firstTempFile.Close()
-
-	// Rename the file to final download file
-	if err = os.Rename(firstTempFile.Name(), d.SaveFullPath()); err != nil {
-		d.Abort()
-		return err
-	}
-
-	// Delete all temporary files
-	for _, v := range d.tempFileList[1:] {
-		if err := os.Remove(v); err != nil {
-			return err
-		}
-	}
-
-	fmt.Println("Combine temporary files done")
-
-	return nil
+	// Set current goroutine as completed
+	wg.Done()
 }
