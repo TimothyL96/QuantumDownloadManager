@@ -1,15 +1,41 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+
+	"github.com/go-chi/chi"
 
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/manager"
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user/setting"
 )
 
+type downloadDTO struct {
+	Url string
+}
+
 func main() {
 	// Testing concurrent download
-	test()
+	// test()
+
+	fmt.Println("Running")
+	r := chi.NewRouter()
+
+	r.Post("/download", func(w http.ResponseWriter, r *http.Request) {
+		var url downloadDTO
+		err := json.NewDecoder(r.Body).Decode(&url)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("received", url.Url)
+		_, _ = io.WriteString(w, url.Url)
+	})
+
+	log.Fatal(http.ListenAndServe(":3333", r))
 }
 
 func test() {
