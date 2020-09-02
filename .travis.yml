@@ -1,15 +1,10 @@
 language: go
 os: windows
-
 go:
-  - "1.14.6"
-
+- 1.15.1
 before_install:
-  - go get -t -v ./...
-
+- go get -t -v ./...
 install:
-  - go build ./app/downloader
-
+- go build ./app/downloader
 script:
-  - go test -v ./...
-#  - go test -v -race -coverprofile=coverage.txt -covermode=atomic
+- go test -v ./...
