@@ -1,7 +1,7 @@
 language: go
 os: windows
 go:
-- 1.14.7
+- 1.15.2
 before_install:
 - go get -t -v ./...
 install:
