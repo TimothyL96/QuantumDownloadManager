@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi"
 
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/manager"
-	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user/setting"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user"
 )
 
 type downloadDTO struct {
@@ -35,7 +35,23 @@ func main() {
 		_, _ = io.WriteString(w, url.Url)
 	})
 
+	output := TestOutput{
+		Status:     1,
+		Percentage: 100.1,
+	}
+
+	r.Get("/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(output)
+	})
+
 	log.Fatal(http.ListenAndServe(":3333", r))
+}
+
+// TestOutput for GET API
+type TestOutput struct {
+	Status     int     `json:"status"`
+	Percentage float32 `json:"percentage"`
 }
 
 func test() {
