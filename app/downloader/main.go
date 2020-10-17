@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi"
 
 	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/manager"
-	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user"
+	"github.com/ttimt/QuantumDownloadManager/internal/app/downloader/user/setting"
 )
 
 type downloadDTO struct {
