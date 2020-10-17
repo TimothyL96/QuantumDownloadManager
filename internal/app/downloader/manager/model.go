@@ -42,8 +42,8 @@ type Download struct {
 	isDownloadAborted     bool
 
 	// Temporary files variables
-	tempFileNameAppender int
-	tempFileList         []string
+	tempFileNameSuffix int
+	tempFileList       []string
 
 	// Response
 	response *http.Response
@@ -314,7 +314,7 @@ func (d *Download) setIsDownloadComplete(isDownloadComplete bool) error {
 }
 
 func (d *Download) setTempFileNameAppender(fileAppender int) error {
-	d.tempFileNameAppender = fileAppender
+	d.tempFileNameSuffix = fileAppender
 
 	return nil
 }
